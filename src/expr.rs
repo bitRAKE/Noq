@@ -279,29 +279,29 @@ impl Expr {
     }
 }
 
+
 #[allow(unused_macros)]
 macro_rules! fun_args {
-    () => { vec![] };
-    ($name:ident) => { vec![expr!($name)] };
-    ($name:ident,$($rest:tt)*) => {
-        {
-            let mut t = vec![expr!($name)];
-            t.append(&mut fun_args!($($rest)*));
-            t
-        }
+    () => {
+        vec![]
     };
+    ($name:ident) => {
+        vec![expr!($name)]
+    };
+    ($name:ident,$($rest:tt)*) => {{
+        let mut t = vec![expr!($name)];
+        t.append(&mut fun_args!($($rest)*));
+        t
+    }};
     ($name:ident($($args:tt)*)) => {
         vec![expr!($name($($args)*))]
     };
-    ($name:ident($($args:tt)*),$($rest:tt)*) => {
-        {
-            let mut t = vec![expr!($name($($args)*))];
-            t.append(&mut fun_args!($($rest)*));
-            t
-        }
-    }
+    ($name:ident($($args:tt)*),$($rest:tt)*) => {{
+        let mut t = vec![expr!($name($($args)*))];
+        t.append(&mut fun_args!($($rest)*));
+        t
+    }}
 }
-
 
 #[allow(unused_macros)]
 macro_rules! expr {
@@ -309,9 +309,13 @@ macro_rules! expr {
         Expr::var_or_sym_based_on_name(stringify!($name))
     };
     ($name:ident($($args:tt)*)) => {
-        Expr::Fun(Box::new(Expr::var_or_sym_based_on_name(stringify!($name))), fun_args!($($args)*))
+        Expr::Fun(
+            Box::new(Expr::var_or_sym_based_on_name(stringify!($name))),
+            fun_args!($($args)*)
+        )
     };
 }
+
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

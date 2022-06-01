@@ -5,7 +5,7 @@ Not [Coq](https://coq.inria.fr/). Simple expression transformer that is not Coq.
 ## Quick Start
 
 ```console
-$ cargo run ./examples/add.noq
+$ cargo run examples/der-square.noq
 ```
 
 ## Main Idea

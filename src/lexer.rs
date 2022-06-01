@@ -214,73 +214,69 @@ impl<Chars: Iterator<Item=char>> Lexer<Chars> {
                 self.cnum += 1;
                 let mut text = x.to_string();
                 match x {
-                    '(' => Token {kind: TokenKind::OpenParen,  text, loc},
-                    ')' => Token {kind: TokenKind::CloseParen, text, loc},
-                    ',' => Token {kind: TokenKind::Comma,      text, loc},
+                    '(' => Token {text, loc, kind: TokenKind::OpenParen},
+                    ')' => Token {text, loc, kind: TokenKind::CloseParen},
+                    ',' => Token {text, loc, kind: TokenKind::Comma},
                     '=' => if self.chars.next_if(|x| *x == '=').is_some() {
                         self.cnum += 1;
                         text.push('=');
-                        Token {kind: TokenKind::EqualsEquals, text, loc}
+                        Token {text, loc, kind: TokenKind::EqualsEquals}
                     } else {
-                        Token {kind: TokenKind::Equals,     text, loc}
+                        Token {text, loc, kind: TokenKind::Equals}
                     },
                     ':' => if self.chars.next_if(|x| *x == ':').is_some() {
                         self.cnum += 1;
                         text.push(':');
-                        Token {kind: TokenKind::DoubleColon, text, loc}
+                        Token {text, loc, kind: TokenKind::DoubleColon}
                     } else {
-                        Token {kind: TokenKind::Colon, text, loc}
+                        Token {text, loc, kind: TokenKind::Colon}
                     },
-                    '+' => Token {kind: TokenKind::Plus,       text, loc},
-                    '-' => Token {kind: TokenKind::Dash,       text, loc},
-                    '*' => Token {kind: TokenKind::Asterisk,   text, loc},
-                    '/' => Token {kind: TokenKind::Slash,      text, loc},
-                    '^' => Token {kind: TokenKind::Caret,      text, loc},
-                    '%' => Token {kind: TokenKind::Percent,    text, loc},
-                    '{' => Token {kind: TokenKind::OpenCurly,  text, loc},
-                    '}' => Token {kind: TokenKind::CloseCurly, text, loc},
-                    '|' => Token {kind: TokenKind::Bar,        text, loc},
-                    '!' => Token {kind: TokenKind::Bang,       text, loc},
+                    '+' => Token {text, loc, kind: TokenKind::Plus},
+                    '-' => Token {text, loc, kind: TokenKind::Dash},
+                    '*' => Token {text, loc, kind: TokenKind::Asterisk},
+                    '/' => Token {text, loc, kind: TokenKind::Slash},
+                    '^' => Token {text, loc, kind: TokenKind::Caret},
+                    '%' => Token {text, loc, kind: TokenKind::Percent},
+                    '{' => Token {text, loc, kind: TokenKind::OpenCurly},
+                    '}' => Token {text, loc, kind: TokenKind::CloseCurly},
+                    '|' => Token {text, loc, kind: TokenKind::Bar},
+                    '!' => Token {text, loc, kind: TokenKind::Bang},
                     '"' => {
                         // TODO: no support for escaped sequences inside of string literals
                         text.clear();
                         while let Some(x) = self.chars.next_if(|x| *x != '"') {
                             text.push(x)
                         }
-                        Token {
-                            kind: if self.chars.next_if(|x| *x == '"').is_some() {
+                        Token {text, loc, kind:
+                            if self.chars.next_if(|x| *x == '"').is_some() {
                                 TokenKind::Str
                             } else {
                                 TokenKind::UnclosedStr
-                            },
-                            text,
-                            loc
+                            }
                         }
                     }
                     _ => {
                         if !is_ident_char(&x) {
                             self.exhausted = true;
-                            Token{kind: TokenKind::Invalid, text, loc}
+                            Token{text, loc, kind: TokenKind::Invalid}
                         } else {
                             while let Some(x) = self.chars.next_if(is_ident_char) {
                                 self.cnum += 1;
                                 text.push(x)
                             }
-
                             if let Some(kind) = keyword_by_name(&text) {
-                                Token{kind, text, loc}
+                                Token{text, loc, kind}
                             } else {
-                                Token{kind: TokenKind::Ident, text, loc}
+                                Token{text, loc, kind: TokenKind::Ident}
                             }
                         }
                     }
                 }
             }
-
             None => {
                 self.cnum += 1;
                 self.exhausted = true;
-                Token{kind: TokenKind::End, text: "".to_string(), loc}
+                Token{text: "".to_string(), loc, kind: TokenKind::End}
             }
         }
     }

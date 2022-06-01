@@ -1,15 +1,12 @@
-use std::collections::HashMap;
-use std::io;
-use std::io::{stdin, stdout, Write};
-use std::env;
-use std::fs;
-use std::fmt;
-use std::time::Duration;
-
-use crossterm::terminal;
-use crossterm::event::{
-    poll, read, 
-    Event, KeyCode, KeyEvent, KeyModifiers
+use std::{
+    collections::HashMap,
+    env, fmt, fs,
+    io::{self, stdin, stdout, Write},
+    time::Duration,
+};
+use crossterm::{
+    terminal,
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers}
 };
 
 #[macro_use]
@@ -1002,8 +999,8 @@ fn start_new_cool_repl() {
     let mut new_cool_repl: NewCoolRepl = Default::default();
 
     loop {
-        if poll(Duration::from_millis(1_000)).unwrap() {
-            match read().unwrap() {
+        if event::poll(Duration::from_millis(1_000)).unwrap() {
+            match event::read().unwrap() {
                 Event::Key(KeyEvent { code: KeyCode::Char('a'), modifiers: KeyModifiers::CONTROL, }) |
                 Event::Key(KeyEvent { code: KeyCode::Home, modifiers: KeyModifiers::NONE, })
                 => new_cool_repl.home(),
@@ -1046,6 +1043,7 @@ fn start_new_cool_repl() {
                     if let Ok((head, body)) = parse_match(&mut Lexer::new(new_cool_repl.buffer.iter().cloned(), None)) {
                         let subexprs = find_all_subexprs(&head, &body);
                         for subexpr in subexprs {
+                            write!(stdout, "__hl__\r\n").unwrap();
                             new_cool_repl.popup.push(format!("{}", HighlightedSubexpr{expr: &body, subexpr}));
                         }
                     }

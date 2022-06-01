@@ -1,9 +1,6 @@
-use std::io;
-use std::io::{stdout, Write};
-use std::fmt;
-
+use std::{fmt, io::{self, Write}};
 use crossterm::{
-    cursor, execute,
+    cursor,
     style::{Color, ResetColor, SetForegroundColor},
     terminal::{Clear, ClearType},
 };
@@ -122,11 +119,7 @@ impl<'a> fmt::Display for HighlightedSubexpr<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let HighlightedSubexpr{expr, subexpr} = self;
         if expr == subexpr {
-// TODO: handle errors corrently
-            execute!(stdout(),SetForegroundColor(Color::Green)).unwrap();
-            let v = write!(f, "{}", expr);
-            execute!(stdout(),ResetColor).unwrap();
-            v
+            write!(f, "{}{}{}", SetForegroundColor(Color::Green), expr, ResetColor)
         } else {
             // TODO: get rid of duplicate code in fmt::Display instance of HighlightedSubexpr and Expr
             match expr {

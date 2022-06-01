@@ -1,10 +1,12 @@
-use std::io::Write;
 use std::io;
+use std::io::{stdout, Write};
 use std::fmt;
 
-use termion::clear;
-use termion::cursor;
-use termion::color;
+use crossterm::{
+    cursor, execute,
+    style::{Color, ResetColor, SetForegroundColor},
+    terminal::{Clear, ClearType},
+};
 
 use super::expr::*;
 
@@ -95,7 +97,7 @@ impl NewCoolRepl {
     pub fn render(&self, prompt: &str, sink: &mut impl Write) -> io::Result<()> {
         const POPUP_SIZE: usize = 5;
         let buffer: String = self.buffer.iter().collect();
-        write!(sink, "\r{}{}{}\r\n", clear::AfterCursor, prompt, &buffer)?;
+        write!(sink, "\r{}{}{}\r\n", Clear(ClearType::UntilNewLine), prompt, &buffer)?;
         for (index, line) in self.popup.iter().take(POPUP_SIZE).enumerate() {
             if index == self.popup_cursor {
                 write!(sink, ">")?
@@ -105,8 +107,8 @@ impl NewCoolRepl {
             write!(sink, " {}\r\n", line)?;
         }
         write!(sink, "{}{}",
-               cursor::Up((POPUP_SIZE.min(self.popup.len()) + 1).try_into().unwrap()),
-               cursor::Right((prompt.len() + self.buffer_cursor).try_into().unwrap()))?;
+               cursor::MoveUp((POPUP_SIZE.min(self.popup.len()) + 1).try_into().unwrap()),
+               cursor::MoveRight((prompt.len() + self.buffer_cursor).try_into().unwrap()))?;
         Ok(())
     }
 }
@@ -120,7 +122,11 @@ impl<'a> fmt::Display for HighlightedSubexpr<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let HighlightedSubexpr{expr, subexpr} = self;
         if expr == subexpr {
-            write!(f, "{}{}{}", color::Fg(color::Green), expr, color::Fg(color::Reset))
+// TODO: handle errors corrently
+            execute!(stdout(),SetForegroundColor(Color::Green)).unwrap();
+            let v = write!(f, "{}", expr);
+            execute!(stdout(),ResetColor).unwrap();
+            v
         } else {
             // TODO: get rid of duplicate code in fmt::Display instance of HighlightedSubexpr and Expr
             match expr {

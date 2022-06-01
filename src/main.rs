@@ -1,14 +1,16 @@
 use std::collections::HashMap;
-use std::io::{stdin, stdout};
-use std::io::Write;
+use std::io;
+use std::io::{stdin, stdout, Write};
 use std::env;
 use std::fs;
-use std::io;
 use std::fmt;
+use std::time::Duration;
 
-use termion::raw::IntoRawMode;
-use termion::input::TermRead;
-use termion::event::Key;
+use crossterm::terminal;
+use crossterm::event::{
+    poll, read, 
+    Event, KeyCode, KeyEvent, KeyModifiers
+};
 
 #[macro_use]
 mod lexer;
@@ -992,49 +994,73 @@ fn start_new_cool_repl() {
     // TODO: check if the stdin is tty
     // If it is not maybe switch to the old/simplified REPL
     let prompt = "new> ";
-    let mut stdout = stdout().into_raw_mode().unwrap();
-    let stdin = stdin();
+    terminal::enable_raw_mode().unwrap();
+    let mut stdout = io::stdout();
     write!(stdout, "{}", prompt).unwrap();
     stdout.flush().unwrap();
 
     let mut new_cool_repl: NewCoolRepl = Default::default();
 
-    for key in stdin.keys() {
-        match key.unwrap() {
-            Key::Char('\n') => {
-                write!(stdout, "\r\n").unwrap();
-                if &new_cool_repl.take() == "quit" {
-                    break
-                }
-            }
-            Key::Ctrl('a') | Key::Home => new_cool_repl.home(),
-            Key::Ctrl('e') | Key::End => new_cool_repl.end(),
-            Key::Ctrl('b') | Key::Left => new_cool_repl.left_char(),
-            Key::Ctrl('f') | Key::Right => new_cool_repl.right_char(),
-            Key::Ctrl('n') | Key::Down => new_cool_repl.down(),
-            Key::Ctrl('p') | Key::Up => new_cool_repl.up(),
-            Key::Ctrl('c') => {
-                write!(stdout, "^C\r\n").unwrap();
-                break;
-            }
-            Key::Alt('b') => new_cool_repl.left_word(),
-            Key::Alt('f') => new_cool_repl.right_word(),
-            Key::Char(key) => {
-                new_cool_repl.insert_char(key);
-                new_cool_repl.popup.clear();
-                if let Ok((head, body)) = parse_match(&mut Lexer::new(new_cool_repl.buffer.iter().cloned(), None)) {
-                    let subexprs = find_all_subexprs(&head, &body);
-                    for subexpr in subexprs {
-                        new_cool_repl.popup.push(format!("{}", HighlightedSubexpr{expr: &body, subexpr}));
+    loop {
+        if poll(Duration::from_millis(1_000)).unwrap() {
+            match read().unwrap() {
+                Event::Key(KeyEvent { code: KeyCode::Char('a'), modifiers: KeyModifiers::CONTROL, }) |
+                Event::Key(KeyEvent { code: KeyCode::Home, modifiers: KeyModifiers::NONE, })
+                => new_cool_repl.home(),
+                Event::Key(KeyEvent { code: KeyCode::Char('e'), modifiers: KeyModifiers::CONTROL, }) |
+                Event::Key(KeyEvent { code: KeyCode::End, modifiers: KeyModifiers::NONE, })
+                => new_cool_repl.end(),
+                Event::Key(KeyEvent { code: KeyCode::Char('b'), modifiers: KeyModifiers::CONTROL, }) |
+                Event::Key(KeyEvent { code: KeyCode::Left, modifiers: KeyModifiers::NONE, })
+                => new_cool_repl.left_char(),
+                Event::Key(KeyEvent { code: KeyCode::Char('f'), modifiers: KeyModifiers::CONTROL, }) |
+                Event::Key(KeyEvent { code: KeyCode::Right, modifiers: KeyModifiers::NONE, })
+                => new_cool_repl.right_char(),
+                Event::Key(KeyEvent { code: KeyCode::Char('n'), modifiers: KeyModifiers::CONTROL, }) |
+                Event::Key(KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::NONE, })
+                => new_cool_repl.down(),
+                Event::Key(KeyEvent { code: KeyCode::Char('p'), modifiers: KeyModifiers::CONTROL, }) |
+                Event::Key(KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::NONE, })
+                => new_cool_repl.up(),
+
+                Event::Key(KeyEvent { code: KeyCode::Enter, modifiers: KeyModifiers::NONE, })
+                => {
+                    write!(stdout, "\r\n").unwrap();
+                    if &new_cool_repl.take() == "quit" {
+                        break
                     }
                 }
-            },
-            Key::Backspace => new_cool_repl.backspace(),
-            _ => {},
+                Event::Key(KeyEvent { code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL, })
+                => {
+                    write!(stdout, "^C\r\n").unwrap();
+                    break;
+                }
+                Event::Key(KeyEvent { code: KeyCode::Char('b'), modifiers: KeyModifiers::ALT, })
+                => new_cool_repl.left_word(),
+                Event::Key(KeyEvent { code: KeyCode::Char('f'), modifiers: KeyModifiers::ALT, })
+                => new_cool_repl.right_word(),
+                Event::Key(KeyEvent { code: KeyCode::Char(key), modifiers: KeyModifiers::NONE, })
+                => {
+                    new_cool_repl.insert_char(key);
+                    new_cool_repl.popup.clear();
+                    if let Ok((head, body)) = parse_match(&mut Lexer::new(new_cool_repl.buffer.iter().cloned(), None)) {
+                        let subexprs = find_all_subexprs(&head, &body);
+                        for subexpr in subexprs {
+                            new_cool_repl.popup.push(format!("{}", HighlightedSubexpr{expr: &body, subexpr}));
+                        }
+                    }
+                },
+                Event::Key(KeyEvent { code: KeyCode::Backspace, modifiers: KeyModifiers::NONE, })
+                => new_cool_repl.backspace(),
+                _ => {},
+            }
+            new_cool_repl.render(prompt, &mut stdout).unwrap();
+            stdout.flush().unwrap();
+        } else {
+            break;
         }
-        new_cool_repl.render(prompt, &mut stdout).unwrap();
-        stdout.flush().unwrap();
     }
+    terminal::disable_raw_mode().unwrap();
 }
 
 fn main() {
